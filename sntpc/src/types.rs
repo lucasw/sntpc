@@ -39,7 +39,7 @@ pub(crate) const SECONDS_FRAC_MASK: u64 = 0xffff_ffff;
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub(crate) struct NtpPacket {
+pub struct NtpPacket {
     pub(crate) li_vn_mode: u8,
     pub(crate) stratum: u8,
     pub(crate) poll: i8,
@@ -165,7 +165,7 @@ impl Display for Units {
 pub enum Error {
     /// Origin timestamp value in a NTP response differs from the value
     /// that has been sent in the NTP request
-    IncorrectOriginTimestamp,
+    IncorrectOriginTimestamp(u64, u64),
     /// Incorrect mode value in a NTP response
     IncorrectMode,
     /// Incorrect Leap Indicator (LI) value in a NTP response
@@ -451,7 +451,7 @@ impl NtpNum for u64 {
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct RawNtpPacket(pub(crate) [u8; size_of::<NtpPacket>()]);
+pub struct RawNtpPacket(pub [u8; size_of::<NtpPacket>()]);
 
 impl Default for RawNtpPacket {
     fn default() -> Self {

@@ -847,7 +847,7 @@ pub mod sync {
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
-fn process_response(
+pub fn process_response(
     send_req_result: SendRequestResult,
     resp: RawNtpPacket,
     recv_timestamp: u64,
@@ -867,7 +867,8 @@ fn process_response(
     );
 
     if send_req_result.originate_timestamp != packet.origin_timestamp {
-        return Err(Error::IncorrectOriginTimestamp);
+        // hprintln!("origin mismatch {} {}", send_req_result.originate_timestamp, packet.origin_timestamp);
+        return Err(Error::IncorrectOriginTimestamp(send_req_result.originate_timestamp, packet.origin_timestamp));
     }
     // Shift is 0
     let mode = shifter(packet.li_vn_mode, MODE_MASK, MODE_SHIFT);
@@ -999,7 +1000,7 @@ fn offset_calculate(t1: u64, t2: u64, t3: u64, t4: u64, units: Units) -> i64 {
     }
 }
 
-fn get_ntp_timestamp<T: NtpTimestampGenerator>(timestamp_gen: &T) -> u64 {
+pub fn get_ntp_timestamp<T: NtpTimestampGenerator>(timestamp_gen: &T) -> u64 {
     ((timestamp_gen.timestamp_sec()
         + (u64::from(NtpPacket::NTP_TIMESTAMP_DELTA)))
         << 32)
