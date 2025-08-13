@@ -840,6 +840,47 @@ pub mod sync {
             send_req_result,
         ))
     }
+
+    /// Reimplementation of sntp_process_response
+    /// works in async in embassy
+    pub async fn get_ntp_correction(
+        remote_sock_addr: &core::net::SocketAddr,
+        sock_wrapper: &impl NtpUdpSocket,
+        mut context: NtpContext<
+            impl NtpTimestampGenerator + core::marker::Copy,
+        >,
+    ) -> Result<NtpResult> {
+        // TODO(lucasw) if any unhandled ntp results are sitting in the buffer this
+        // fouls up, flush them above
+        // this is working
+        // { originate_timestamp: 9487534653230284800, version: 35 }
+        let send_req_result =
+            sntp_send_request(*remote_sock_addr, sock_wrapper, context)?;
+
+        // TODO(lucasw) this is a local version of sntp_process_response(), it appears to be working
+        // where-as the sntpc version is locking up because it isn't meant to be used in the
+        // embassy task environment?
+        let mut response_buf = crate::RawNtpPacket::default();
+        let (response, _udp_src) =
+            sock_wrapper.recv_from(response_buf.0.as_mut()).await?;
+
+        // TODO(lucasw) need to compare IpAddr to IpAddress
+        /*
+        if remote_sock_addr.ip() != udp_src.endpoint.addr {
+           return Err(Error::ResponseAddressMismatch);
+        }
+        */
+
+        if response != size_of::<crate::NtpPacket>() {
+            // hprintln!("bad ntp rx size {} != {}", response, size_of::<NtpPacket>());
+            return Err(crate::Error::IncorrectPayload);
+        }
+
+        context.timestamp_gen.init();
+        let recv_timestamp = crate::get_ntp_timestamp(&context.timestamp_gen);
+
+        crate::process_response(send_req_result, response_buf, recv_timestamp)
+    }
 }
 
 #[allow(
